@@ -79,6 +79,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\SpiderpadUpdater\SpiderpadUpdater.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
 	  <MauiXaml Update="UpdatingPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>

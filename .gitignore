@@ -1,0 +1,88 @@
+# Build results
+bin/
+obj/
+[Bb]uild/
+[Bb]uilds/
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+
+# VS Code
+.vscode/
+
+# Visual Studio
+.vs/
+*.dbmdl
+*.VC.db
+*.VC.opendb
+*.pdb
+
+# Rider
+.idea/
+
+# Logs
+*.log
+
+# User-specific files
+*.swp
+*.swo
+*.tmp
+*.userprefs
+
+# OS-specific
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# MAUI-specific
+**/Platforms/Android/obj/
+**/Platforms/Android/bin/
+**/Platforms/iOS/obj/
+**/Platforms/iOS/bin/
+**/Platforms/MacCatalyst/obj/
+**/Platforms/MacCatalyst/bin/
+**/Platforms/Windows/obj/
+**/Platforms/Windows/bin/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Dotnet tools
+**/.dotnet/
+.dotnet/
+
+# Backup & crash reports
+*.bak
+*.orig
+*.rej
+*.crash
+
+# Config files (optional - if you want to keep these out of source control)
+*.launch.json
+*.settings.json
+
+# Device-specific or IDE telemetry
+*.tlog
+*.cache
+*.ide
+*.ipch
+*.iobj
+
+# Local test runs
+TestResults/
+coverage/
+
+# JetBrains Rider
+.idea/
+
+# Resharper
+_ReSharper*/
+*.DotSettings.user

@@ -1,8 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "XM8OfyAgNDw=",
+  "dgSpecHash": "pQjAGcjwysk=",
   "success": true,
   "projectFilePath": "D:\\SpiderPadSuite\\SpiderpadUpdater\\SpiderpadUpdater.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "C:\\Users\\swapn\\.nuget\\packages\\microsoft.windows.sdk.net.ref\\10.0.19041.34\\microsoft.windows.sdk.net.ref.10.0.19041.34.nupkg.sha512"
+  ],
   "logs": []
 }
