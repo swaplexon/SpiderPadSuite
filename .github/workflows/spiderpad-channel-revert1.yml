@@ -1,0 +1,142 @@
+﻿name: 🧪 SPIDERPAD Build Revert
+run-name: "🧪 SPIDERPAD Build channel ${{ github.event.inputs.channel}} Revert to ${{ github.event.inputs.revert_to_version }}"
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 'Which channel to revert?'
+        required: true
+        type: choice
+        options:
+          - alpha
+          - beta
+          - gamma
+          - delta
+          - neptune
+      revert_to_version:
+        description: 'Version to revert to (e.g. 1.2)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  SPIDERPAD-Revert:
+    runs-on: windows-latest
+
+    env:
+      APP_NAME: Spiderpad
+
+    steps:
+      - name: 🧾 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔐 Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: 📦 Revert S3 artifacts to previous version (archive + channel prefix)
+        shell: pwsh
+        run: |
+          $channel = "${{ github.event.inputs.channel }}"
+          $versionInput = "${{ github.event.inputs.revert_to_version }}"
+          $version = $versionInput.TrimStart("v")  # Normalize version
+          $bucket = "${{ env.APP_NAME }}-alpha".ToLower()
+          $region = "${{ secrets.AWS_REGION }}"
+          $appName = "${{ env.APP_NAME }}"
+          $timestamp = Get-Date -Format "yyyyMMddHHmmss"
+
+          $prefix = "$channel"
+          $msixFrom = "$prefix/$appName-$version.msix"
+          $appxFrom = "$prefix/$appName-$version.appinstaller"
+          $msixLatest = "$prefix/$appName-latest.msix"
+          $appxLatest = "$prefix/$appName-latest.appinstaller"
+          $msixBackup = "$prefix/archive/$appName-rollback-$timestamp`_fault.msix"
+          $appxBackup = "$prefix/archive/$appName-rollback-$timestamp`_fault.appinstaller"
+
+          Write-Host "🔍 Checking version '$version' in s3://$bucket/$prefix..."
+
+          $msixCheck = aws s3 ls "s3://$bucket/$msixFrom" --region $region
+          if (-not $msixCheck) {
+            Write-Error "❌ ERROR: '$msixFrom' not found in s3://$bucket/"
+            exit 1
+          }
+
+          $appxCheck = aws s3 ls "s3://$bucket/$appxFrom" --region $region
+          if (-not $appxCheck) {
+            Write-Error "❌ ERROR: '$appxFrom' not found in s3://$bucket/"
+            exit 1
+          }
+
+          Write-Host "📁 Archiving current 'latest' artifacts..."
+
+          $existingMsix = aws s3 ls "s3://$bucket/$msixLatest" --region $region
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "🗃️ Archiving $msixLatest → $msixBackup"
+            aws s3 mv "s3://$bucket/$msixLatest" "s3://$bucket/$msixBackup" --region $region --acl public-read
+          }
+
+          $existingAppx = aws s3 ls "s3://$bucket/$appxLatest" --region $region
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "🗃️ Archiving $appxLatest → $appxBackup"
+            aws s3 mv "s3://$bucket/$appxLatest" "s3://$bucket/$appxBackup" --region $region --acl public-read
+          }
+
+          Write-Host "♻️ Restoring $version as 'latest'..."
+
+          aws s3 cp "s3://$bucket/$msixFrom" "s3://$bucket/$msixLatest" --region $region --acl public-read
+          aws s3 cp "s3://$bucket/$appxFrom" "s3://$bucket/$appxLatest" --region $region --acl public-read
+
+          Write-Host "✅ Rollback complete."
+          Write-Host "🌐 MSIX URL: https://$bucket.s3.$region.amazonaws.com/$msixLatest"
+          Write-Host "🌐 AppInstaller URL: https://$bucket.s3.$region.amazonaws.com/$appxLatest"
+
+      - name: 📝 Update metadata JSON file
+        shell: pwsh
+        run: |
+          $channel = "${{ github.event.inputs.channel }}"
+          $versionInput = "${{ github.event.inputs.revert_to_version }}"
+          $version = $versionInput.TrimStart("v")
+          $bucket = "${{ env.APP_NAME }}-alpha".ToLower()
+          $region = "${{ secrets.AWS_REGION }}"
+          $appName = "${{ env.APP_NAME }}"
+          $jsonPath = "metadata/$channel.json"
+          $tempPath = "metadata/tmp_$channel.json"
+          $url = "https://$bucket.s3.$region.amazonaws.com/$channel/$appName-latest.appinstaller"
+
+          Write-Host "🔧 Updating $jsonPath to version $version"
+
+          $json = Get-Content $jsonPath | ConvertFrom-Json
+          $json.version = $version
+          $json.binary_url = $url
+
+          $json | ConvertTo-Json -Depth 5 | Out-File -FilePath $tempPath -Encoding UTF8
+          Move-Item -Path $tempPath -Destination $jsonPath -Force
+
+          Write-Host "✅ Metadata updated:"
+          Get-Content $jsonPath
+
+      - name: 🔁 Delete existing rollback tag if present
+        run: |
+          $tag = "rollback-${{ github.event.inputs.channel }}-${{ github.event.inputs.revert_to_version }}"
+          Write-Host "🗑️ Deleting local tag (if exists): $tag"
+          git tag -d $tag 2>$null || true
+
+          Write-Host "🗑️ Deleting remote tag (if exists): $tag"
+          git push origin :refs/tags/$tag 2>$null || true
+
+      - name: 💾 Commit updated metadata and tag rollback
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add metadata/${{ github.event.inputs.channel }}.json
+          git commit -m "⏪ [Rollback] Revert Spiderpad on ${{ github.event.inputs.channel }} to ${{ github.event.inputs.revert_to_version }}"
+          git tag rollback-${{ github.event.inputs.channel }}-${{ github.event.inputs.revert_to_version }}
+          git push
+          git push --tags
+
+      - name: ✅ Done
+        run: echo "✅ FULL ROLLBACK COMPLETE — Artifacts, metadata, and Git history updated."

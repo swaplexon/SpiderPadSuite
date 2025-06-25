@@ -1,0 +1,351 @@
+﻿# name and trigger unchanged
+name: 🧪 SPIDERPAD Build Promote
+
+run-name: "🧪 SPIDERPAD Build Promote to ${{ github.event.inputs.channel}}"
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 'Choose a release channel (used for S3 folder and API base config)'
+        required: true
+        default: 'alpha'
+        type: choice
+        options:
+          - alpha
+          - beta
+          - gamma
+          - delta
+          - neptune
+      version:
+        description: 'Choose major or minor version to increment'
+        required: true
+        type: choice
+        default: 'minor'
+        options:
+          - major
+          - minor
+      
+
+permissions:
+  contents: write
+
+jobs:
+  SPIDERPAD-Promote:
+    runs-on: windows-latest
+
+    env:
+      APP_NAME: Spiderpad
+      APP_DEPLOY_NAME: Spiderpad-${{github.event.inputs.channel}}
+
+    steps:
+      - name: 🔄 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Patch ApplicationTitle in .csproj
+        run: |
+          $appName = "${{ env.APP_DEPLOY_NAME }}"
+          $csprojPath = "SpiderPad.csproj"
+          Write-Host "🔧 Patching ApplicationTitle in $csprojPath to $appName"
+          (Get-Content $csprojPath) -replace '<ApplicationTitle>.*?</ApplicationTitle>', "<ApplicationTitle>$appName</ApplicationTitle>" | Set-Content $csprojPath
+          Write-Host "✅ ApplicationTitle patched successfully."
+
+      - name: 🛠️ Setup .NET SDK
+        uses: actions/setup-dotnet@v3
+        with:
+            dotnet-version: '8.x.x'
+
+      - name: 🧮 Versioning the build
+        id: increment_version
+        run: |
+          $channel = "${{ github.event.inputs.channel }}"
+          $versionType = "${{ github.event.inputs.version }}"
+
+          Write-Host "📂 Channel selected: $channel"
+          Write-Host "📌 Version bump type: $versionType"
+
+          $metadataPath = "metadata/$channel.json"
+          $json = Get-Content $metadataPath | ConvertFrom-Json
+          $oldVersion = $json.version
+          Write-Host "🔢 Current version: $oldVersion"
+
+          $versionNumber = $oldVersion.TrimStart("v")
+          $parts = $versionNumber.Split(".")
+          $major = [int]$parts[0]
+          $minor = [int]$parts[1]
+
+          if ($versionType -eq "major") {
+            $major += 1
+            $minor = 0
+          } else {
+            $minor += 1
+          }
+
+          $newVersionMinusPrefix = "$major.$minor"
+          $newVersion = "v$major.$minor"
+          Write-Host "🔼 New version calculated: $newVersion"
+
+          "old_version=$oldVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "new_version=$newVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "new_version_without_prefix=$newVersionMinusPrefix" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+          Write-Host "🟡 Initiating dry-run promotion for LOOP-MAUI..."
+          Write-Host "🚀 Promoting 🔖 $oldVersion → $newVersion on 🔗 '$channel' channel..."
+
+      - name: 📝 Update Package.appxmanifest version
+        shell: pwsh
+        run: |
+          $channel = "${{ github.event.inputs.channel }}"
+          $manifestPath = "./Platforms/Windows/Package.appxmanifest"
+          [xml]$manifest = Get-Content $manifestPath
+          $newVersionRaw = "${{ steps.increment_version.outputs.new_version_without_prefix }}"
+
+          # Inject unique Name per channel
+          $uniqueName = "com.bestwayhealthcare.$channel"
+          Write-Host "🔧 Updating Package Identity Name to: $uniqueName"
+          $manifest.Package.Identity.Name = "com.bestwayhealthcare.$channel"
+          $manifest.Package.Properties.DisplayName = "$env:APP_DEPLOY_NAME"
+
+          # Ensure version is 4 segments
+          $segments = $newVersionRaw.Split('.')
+          while ($segments.Count -lt 4) { $segments += "0" }
+          $newVersion = $segments -join '.'
+
+          $manifest.Package.Identity.Version = $newVersion
+          $manifest.Save($manifestPath)
+          Write-Host "✅ Updated Package Identity Name to: com.bestwayhealthcare.$channel"
+          Write-Host "🛠️ Updated Package.appxmanifest to version: $newVersion"
+
+      - name: 🔧 Generate ChannelConfig.cs
+        shell: pwsh
+        run: |
+          $channel = '${{ github.event.inputs.channel }}'
+          $file    = 'Platforms/Windows/ChannelConfig.cs'
+          # Build the file
+          @"
+          namespace SpiderPad.Platforms.Windows
+          {
+              /// <summary>
+              /// Injected at build time by CI.
+              /// </summary>
+              public static class ChannelConfig
+              {
+                  public const string Channel = "$channel";
+              }
+          }
+          "@ | Out-File -FilePath $file -Encoding UTF8
+          Write-Host "✅ Generated $file with channel = $channel"
+
+      - name: 🔧 Restore .NET dependencies
+        run: |
+          Write-Host "📦 Restoring .NET packages..."
+          dotnet restore
+
+      - name: 🏗️ Build and Publish
+        run: |
+          $out = "$env:GITHUB_WORKSPACE\publish"
+          Write-Host "⚙️ Building and publishing SpiderPad..."
+          dotnet publish SpiderPad.csproj -c Release -f net8.0-windows10.0.19041.0 -r win10-x64 -o $out /p:RuntimeIdentifier=win10-x64 /p:GenerateAppxPackageOnBuild=true /p:Version=${{steps.increment_version.outputs.new_version_without_prefix}} /p:AplicationId="com.bestwayhealthcare.${{ github.event.inputs.channel }}" /p:AppxPackageDir="$out\AppPackages"
+          Write-Host "✅ Build and publish completed successfully."
+          Write-Host "📂 Published artifacts to: $out"
+
+      - name: 📝 Update .appinstaller file with channel-specific URLs
+        shell: pwsh
+        run: |
+          $channel = "${{ github.event.inputs.channel }}"
+          $region = "${{ secrets.AWS_REGION }}"
+          $bucket = "${{ env.APP_NAME }}-alpha".ToLower()
+          $appInstallerPath = "./${{ env.APP_NAME }}.appinstaller"
+          $newVersionRaw = "${{ steps.increment_version.outputs.new_version_without_prefix }}"
+
+          # Ensure 4-segment version
+          $segments = $newVersionRaw.Split('.')
+          while ($segments.Count -lt 4) { $segments += "0" }
+          $newVersion = $segments -join '.'
+
+          # Construct new URIs
+          $baseUri = "https://$bucket.s3.$region.amazonaws.com/$channel"
+          $appInstallerUri = "$baseUri/${{ env.APP_NAME }}-latest.appinstaller"
+          $msixUri = "$baseUri/${{ env.APP_NAME }}-latest.msix"
+
+          [xml]$appInstaller = Get-Content $appInstallerPath
+          $appInstaller.AppInstaller.Uri = $appInstallerUri
+          $appInstaller.AppInstaller.Version = $newVersion                     # ✅ Set AppInstaller version
+          $appInstaller.AppInstaller.MainPackage.Version = $newVersion         # ✅ Match MainPackage version
+          $appInstaller.AppInstaller.MainPackage.Name = "com.bestwayhealthcare.$channel" # ✅ Set MainPackage Name
+          $appInstaller.AppInstaller.MainPackage.Uri = $msixUri
+          $appInstaller.Save($appInstallerPath)
+
+          Write-Host "✅ Updated .appinstaller:"
+          Write-Host "🌐 AppInstaller Uri: $appInstallerUri"
+          Write-Host "🌐 MainPackage Uri:  $msixUri"
+          Write-Host "🔢 Version:          $newVersion"
+
+
+
+
+      - name: 📦 Prepare MSIX package
+        shell: pwsh
+        run: |
+          $appName = "${{ env.APP_NAME }}"
+          $workspace = "$env:GITHUB_WORKSPACE"
+       
+          $latestMsix = Get-ChildItem -Path $workspace -Filter *.msix -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+
+          if (-not $latestMsix) {
+            Write-Error "❌ No MSIX file found in $appPackagesPath"
+            exit 1
+          }
+
+          $newName = "$appName.msix"
+          Copy-Item -Path $latestMsix.FullName -Destination $newName -Force
+          Write-Host "📁 Found latest MSIX: $($latestMsix.Name)"
+          Write-Host "✅ Renamed MSIX to $newName"
+
+      - name: 🔐 Decode certificate from GitHub secret
+        shell: pwsh
+        run: |
+          $pfxBase64 = "${{ secrets.MSIX_CERT_PFX_BASE64 }}"
+          [IO.File]::WriteAllBytes("Spiderpad.pfx", [Convert]::FromBase64String($pfxBase64))
+          Write-Host "✅ Certificate decoded and written to Spiderpad.pfx"
+
+      - name: 🔏 Sign MSIX with certificate
+        shell: pwsh
+        run: |
+          $msixPath = ".\Spiderpad.msix"
+          $pfxPath = ".\Spiderpad.pfx"
+          $password = "${{ secrets.MSIX_CERT_PASSWORD }}"
+
+          if (-not (Test-Path $msixPath)) {
+            Write-Error "❌ MSIX file not found: $msixPath"
+            exit 1
+          }
+
+          # Find signtool.exe dynamically
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
+            Where-Object { $_.FullName -like "*x64*" } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+
+          if (-not $signtool) {
+            Write-Error "❌ signtool.exe not found on runner"
+            exit 1
+          }
+
+          Write-Host "🔍 Found signtool at: $($signtool.FullName)"
+          Write-Host "🔏 Signing $msixPath..."
+
+          & "$($signtool.FullName)" sign /fd SHA256 /f $pfxPath /p $password $msixPath
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "❌ MSIX signing failed."
+            exit 1
+          }
+
+          Write-Host "✅ MSIX signed successfully."
+
+
+
+      - name: 🔐 Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: ☁️ Archive & Upload to S3
+        shell: pwsh
+        run: |
+          $channel = "${{ github.event.inputs.channel }}"
+          $bucket = "${{ env.APP_NAME }}-alpha".ToLower()
+          $region = "${{ secrets.AWS_REGION }}"
+          $appName = "${{ env.APP_NAME }}"
+          $oldVer = "${{ steps.increment_version.outputs.old_version }}".TrimStart("v")
+          $newVer = "${{ steps.increment_version.outputs.new_version_without_prefix }}"
+
+          $prefix = "$channel"
+          $msixLatest = "$prefix/$appName-latest.msix"
+          $msixOld = "$prefix/$appName-$oldVer.msix"
+          $appxLatest = "$prefix/$appName-latest.appinstaller"
+          $appxOld = "$prefix/$appName-$oldVer.appinstaller"
+
+          Write-Host "🗃️ Checking for existing artifacts in s3://$bucket/$prefix/..."
+
+          $existingMsix = aws s3 ls "s3://$bucket/$msixLatest" --region $region
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "📦 Archiving $msixLatest as $msixOld"
+            aws s3 mv "s3://$bucket/$msixLatest" "s3://$bucket/$msixOld" --region $region --acl public-read
+          } else {
+            Write-Host "🆕 No existing MSIX found. Skipping archive."
+          }
+
+          $existingAppx = aws s3 ls "s3://$bucket/$appxLatest" --region $region
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "📦 Archiving $appxLatest as $appxOld"
+            aws s3 mv "s3://$bucket/$appxLatest" "s3://$bucket/$appxOld" --region $region --acl public-read
+          } else {
+            Write-Host "🆕 No existing AppInstaller found. Skipping archive."
+          }
+
+          Write-Host "🚀 Uploading new MSIX and AppInstaller to 'latest'..."
+
+          aws s3 cp "$appName.msix" "s3://$bucket/$msixLatest" --region $region --acl public-read
+          aws s3 cp "$appName.appinstaller" "s3://$bucket/$appxLatest" --region $region --acl public-read
+
+          Write-Host "✅ Upload complete:"
+          Write-Host "🌐 MSIX: https://$bucket.s3.$region.amazonaws.com/$msixLatest"
+          Write-Host "🌐 AppInstaller: https://$bucket.s3.$region.amazonaws.com/$appxLatest"
+
+      - name: 🔁 Delete existing tag if present
+        run: |
+          $tag = "release-${{ github.event.inputs.channel }}-${{ steps.increment_version.outputs.new_version_without_prefix }}"
+          Write-Host "🗑️ Deleting local tag (if exists): $tag"
+          git tag -d $tag 2>$null || true
+
+          Write-Host "🗑️ Deleting remote tag (if exists): $tag"
+          git push origin :refs/tags/$tag 2>$null || true
+
+      - name: 🧩 Commit metadata and tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add metadata/${{ github.event.inputs.channel }}.json
+          git commit -m "🚀 Promote Spiderpad on ${{ github.event.inputs.channel }} from ${{ steps.increment_version.outputs.old_version }} to ${{ steps.increment_version.outputs.new_version }}"
+          git tag release-${{ github.event.inputs.channel }}-${{ steps.increment_version.outputs.new_version_without_prefix }}
+          git push
+          git push --tags
+
+
+      - name: 🧾 Update local metadata JSON
+        shell: pwsh
+        run: |
+          $channel = "${{ github.event.inputs.channel }}"
+          $version = "${{ steps.increment_version.outputs.new_version_without_prefix }}"
+          $bucket = "${{ env.APP_NAME }}-alpha".ToLower()
+          $region = "${{ secrets.AWS_REGION }}"
+          $appName = "${{ env.APP_NAME }}"
+          
+          $jsonPath = "metadata/$channel.json"
+          $tempPath = "metadata/tmp_$channel.json"
+          $url = "https://$bucket.s3.$region.amazonaws.com/$channel/$appName-latest.appinstaller"
+
+          Write-Host "📝 Updating metadata for $channel to version $version"
+          $json = Get-Content $jsonPath | ConvertFrom-Json
+          $json.version = $version
+          $json.binary_url = $url
+
+          $json | ConvertTo-Json -Depth 5 | Out-File -FilePath $tempPath -Encoding UTF8
+          Move-Item -Path $tempPath -Destination $jsonPath -Force
+
+          Write-Host "📁 Updated JSON saved to $jsonPath"
+          Get-Content $jsonPath
+
+      - name: 🧩 Commit changes to repo
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add metadata/${{ github.event.inputs.channel }}.json
+          git commit -m "🔧 [Dry Run] Promote LOOP-MAUI on ${{ github.event.inputs.channel }} from ${{ steps.increment_version.outputs.old_version }} to ${{ steps.increment_version.outputs.new_version }}"
+          git push
+
+      - name: ✅ Done
+        run: echo "🎉 DRY RUN COMPLETE — metadata file has been updated and committed."

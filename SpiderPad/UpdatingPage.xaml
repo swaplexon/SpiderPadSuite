@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="SpiderPad.UpdatingPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="UpdatingPage">
+
+    <Grid HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
+        <StackLayout
+            HorizontalOptions="Center"
+            Spacing="20"
+            VerticalOptions="Center">
+
+            <ActivityIndicator
+                HeightRequest="50"
+                IsRunning="True"
+                WidthRequest="50" />
+
+            <Label
+                FontSize="Medium"
+                HorizontalOptions="Center"
+                Text="Updating to the latest version…" />
+        </StackLayout>
+    </Grid>
+</ContentPage>
