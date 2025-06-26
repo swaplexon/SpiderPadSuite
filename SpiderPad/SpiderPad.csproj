@@ -36,10 +36,10 @@
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 		<!--<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>-->
-		
+
 	</PropertyGroup>
 
-	
+
 
 	<ItemGroup>
 		<!-- App Icon -->
@@ -68,24 +68,33 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <None Include=".github\workflows\archive\spiderpad-channel-promote.yml" />
-	  <None Include=".github\workflows\archive\spiderpad-channel-revert.yml" />
-	  <None Include=".github\workflows\spiderpad-channel-promote1.yml" />
-	  <None Include=".github\workflows\spiderpad-channel-revert1.yml" />
+		<None Include=".github\workflows\archive\spiderpad-channel-promote.yml" />
+		<None Include=".github\workflows\archive\spiderpad-channel-revert.yml" />
+		<None Include=".github\workflows\spiderpad-channel-promote1.yml" />
+		<None Include=".github\workflows\spiderpad-channel-revert1.yml" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Controls\" />
+		<Folder Include="Controls\" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\SpiderpadUpdater\SpiderpadUpdater.csproj" />
+		<!-- Copy the *built* helper into the publish folder  -->
+		<Content Include="..\SpiderpadUpdater\publish\SpiderpadUpdater.exe">
+			<!--   App publish path → Updater/SpiderpadUpdater.exe inside package   -->
+			<PackagePath>Updater\SpiderpadUpdater.exe</PackagePath>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+
+		<!-- If you really want the extra PackageResource entry, add it
+       for this file only, NOT for the whole Content item group. -->
+		<PackageResource Include="..\SpiderpadUpdater\publish\SpiderpadUpdater.exe" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <MauiXaml Update="UpdatingPage.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </MauiXaml>
+		<MauiXaml Update="UpdatingPage.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
 	</ItemGroup>
 
 </Project>

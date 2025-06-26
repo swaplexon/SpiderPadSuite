@@ -141,7 +141,7 @@ jobs:
           dotnet restore
 
       - name: 🔨 Build helper EXE
-        run: dotnet publish SpiderpadUpdater/SpiderpadUpdater.csproj -c Release -r win-x64 -o SpiderpadUpdater/publish
+        run: dotnet publish SpiderpadUpdater/SpiderpadUpdater.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:PublishTrimmed=true -p:SelfContained=true -o SpiderpadUpdater/publish
 
       - name: 🏗️ Build and Publish
         run: |
@@ -210,6 +210,14 @@ jobs:
           $pfxBase64 = "${{ secrets.MSIX_CERT_PFX_BASE64 }}"
           [IO.File]::WriteAllBytes("Spiderpad.pfx", [Convert]::FromBase64String($pfxBase64))
           Write-Host "✅ Certificate decoded and written to Spiderpad.pfx"
+      
+      - name: 🔏 Sign SpiderpadUpdater.exe
+        shell: pwsh
+        run: |
+          $exe = "SpiderpadUpdater/publish/SpiderpadUpdater.exe"
+          $pfx = "Spiderpad.pfx"
+          $pwd = "${{ secrets.MSIX_CERT_PASSWORD }}"
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Where-Object { $_.FullName -like "*x64*" } | Select-Object -First 1 & "$($signtool.FullName)" sign /fd SHA256 /f $pfx /p $pwd $exe
 
       - name: 🔏 Sign MSIX with certificate
         shell: pwsh

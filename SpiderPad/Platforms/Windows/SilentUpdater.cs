@@ -79,6 +79,8 @@ public static class SilentUpdater
             // 4. Prepare updater launch
             var updaterExe = Path.Combine(
                 AppContext.BaseDirectory, "SpiderpadUpdater.exe");
+            var dst = Path.Combine(Path.GetTempPath(), "SpiderpadUpdater.exe");
+            File.Copy(updaterExe, dst, true);
 
             if (!File.Exists(updaterExe))
             {
@@ -90,12 +92,12 @@ public static class SilentUpdater
             await Log($"Launching helper: {updaterExe} {args}");
 
             // 5. Start helper process
-            var psi = new ProcessStartInfo(updaterExe)
+            var psi = new ProcessStartInfo(dst)
             {
                 Arguments = args,
                 UseShellExecute = false,
                 CreateNoWindow = true,
-                WorkingDirectory = Path.GetDirectoryName(updaterExe)!
+               
             };
 
             var updaterProcess = Process.Start(psi);
