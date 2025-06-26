@@ -72,7 +72,7 @@ namespace Spiderpad.Updater
 
                     if (pkg == null)
                     {
-                        Log($"❌ No package found for {pfn}");
+                        Log($"❌ No package found for {packageFamilyName}");
                         return 1;
                     }
 
