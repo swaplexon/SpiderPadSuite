@@ -58,7 +58,7 @@ public static class SilentUpdater
 
             await Log($"Feed version: {feedVer}, MSIX: {msixUri}");
 
-            if (feedVer <= currentVer)
+            if (feedVer == currentVer)
             {
                 await Log("No update required");
                 return;
