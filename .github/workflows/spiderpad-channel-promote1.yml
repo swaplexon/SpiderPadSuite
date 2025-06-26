@@ -63,7 +63,7 @@ jobs:
           Write-Host "📂 Channel selected: $channel"
           Write-Host "📌 Version bump type: $versionType"
 
-          $metadataPath = "metadata/$channel.json"
+          $metadataPath = "Spiderpad/metadata/$channel.json"
           $json = Get-Content $metadataPath | ConvertFrom-Json
           $oldVersion = $json.version
           Write-Host "🔢 Current version: $oldVersion"
