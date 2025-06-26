@@ -89,7 +89,7 @@ public static class SilentUpdater
             }
 
             var args = $"\"{msixUri}\" {channel}";
-            await Log($"Launching helper: {updaterExe} {args}");
+            await Log($"Launching helper: {dst} {args}");
 
             // 5. Start helper process
             var psi = new ProcessStartInfo(dst)

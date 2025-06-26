@@ -18,7 +18,7 @@ namespace Spiderpad.Updater
         }
         static async Task<int> Main(string[] args)
         {
-            if (args.Length < 2)
+            if (args.Length < 3)
             {
                 Log("Insufficient arguments. Usage: Spiderpad.Updater.exe <PackageUri> <channel>");
                 return 1;
@@ -26,6 +26,7 @@ namespace Spiderpad.Updater
 
             string packageUriText = args[0];
             string channel = args[1];
+            string installedRoot = args[2];
             Log($"Update started for channel: {channel}, URI: {packageUriText}");
 
             // 1. Add process existence check
@@ -66,7 +67,21 @@ namespace Spiderpad.Updater
                 {
                     Log("Update successful");
                     var exeName = $"Spiderpad-{CultureInfo.InvariantCulture.TextInfo.ToLower(channel)}.exe";
-                    var exePath = Path.Combine(AppContext.BaseDirectory, exeName);
+                    //var exePath = Path.Combine(AppContext.BaseDirectory, exeName);
+
+                    string exePath;
+
+                    if (!string.IsNullOrEmpty(installedRoot))
+                    {
+                        // Use path passed from MAUI
+                        exePath = Path.Combine(installedRoot, exeName);
+                    }
+                    else
+                    {
+                        // Fallback: look one level up from temp
+                        exePath = Path.GetFullPath(Path.Combine(
+                                     AppContext.BaseDirectory, "..", exeName));
+                    }
 
                     // 4. Add existence check before launch
                     if (File.Exists(exePath))
