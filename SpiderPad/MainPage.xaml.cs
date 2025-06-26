@@ -36,7 +36,7 @@ namespace SpiderPad
             var versionProvider = MauiProgram.Services.GetService<IVersionProvider>();
             string version = versionProvider?.GetAppVersion() ?? "dev";
 
-            WelcomeLabel.Text = $"Overnight Deploy v{version}! crap with logs";
+            WelcomeLabel.Text = $"Overnight Deploy v{version}!";
 
         }
 
