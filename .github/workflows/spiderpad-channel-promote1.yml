@@ -217,7 +217,27 @@ jobs:
           $exe = "SpiderpadUpdater/publish/SpiderpadUpdater.exe"
           $pfx = "Spiderpad.pfx"
           $pwd = "${{ secrets.MSIX_CERT_PASSWORD }}"
-          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Where-Object { $_.FullName -like "*x64*" } | Select-Object -First 1 & "$($signtool.FullName)" sign /fd SHA256 /f $pfx /p $pwd $exe
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe | 
+          Where-Object { $_.FullName -like "*x64*" } | 
+          Select-Object -First 1
+
+          if (-not $signtool) {
+            Write-Error "❌ signtool.exe not found on runner"
+            exit 1
+          }
+
+          Write-Host "🔍 Found signtool at: $($signtool.FullName)"
+          Write-Host "🔏 Signing $exe..."
+          
+          
+          & "$($signtool.FullName)" sign /fd SHA256 /f $pfx /p $pwd $exe
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "❌ SpiderpadUpdater signing failed."
+            exit 1
+          }
+
+          Write-Host "✅ SpiderpadUpdater.exe signed successfully."
 
       - name: 🔏 Sign MSIX with certificate
         shell: pwsh
