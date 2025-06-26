@@ -80,16 +80,15 @@ public static class SilentUpdater
             var updaterExe = Path.Combine(
                 AppContext.BaseDirectory, "SpiderpadUpdater.exe");
             var dst = Path.Combine(Path.GetTempPath(), "SpiderpadUpdater.exe");
-            File.Copy(updaterExe, dst, true);
-
-
-            string pfn = Package.Current.Id.FamilyName;
+            File.Copy(updaterExe, dst, true);            
 
             if (!File.Exists(updaterExe))
             {
                 await Log($"‼️ Updater missing at {updaterExe}");
                 return;
             }
+
+            string pfn = Package.Current.Id.FamilyName;
 
             var args = $"\"{msixUri}\" {channel} \"{pfn}\"";
             await Log($"Launching helper: {dst} {args}");

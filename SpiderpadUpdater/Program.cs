@@ -70,12 +70,23 @@ namespace Spiderpad.Updater
              .OrderByDescending(p => p.Id.Version)
              .FirstOrDefault();
 
-                    if (pkg != null)
+                    if (pkg == null)
                     {
-                        var exePath = Path.Combine(pkg.InstalledLocation.Path, "Spiderpad.exe");
-                        Process.Start(exePath);
-                        return 0;
+                        Log($"❌ No package found for {pfn}");
+                        return 1;
                     }
+
+
+                    var appUserModelId = $"{packageFamilyName}!App";
+                    var shellCmd = $"shell:appsFolder\\{appUserModelId}";
+
+                    Log($"🔄 Relaunching via explorer.exe {shellCmd}");
+                    Process.Start(new ProcessStartInfo("explorer.exe", shellCmd)
+                    {
+                        UseShellExecute = true
+                    });
+                    return 0;
+
                     Log($"ERROR: could not locate package at {packageFamilyName}");
                     return 1;
                 }
