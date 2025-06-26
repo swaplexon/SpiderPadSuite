@@ -157,7 +157,7 @@ jobs:
           $channel = "${{ github.event.inputs.channel }}"
           $region = "${{ secrets.AWS_REGION }}"
           $bucket = "${{ env.APP_NAME }}-alpha".ToLower()
-          $appInstallerPath = "./${{ env.APP_NAME }}.appinstaller"
+          $appInstallerPath = "Spiderpad/${{ env.APP_NAME }}.appinstaller"
           $newVersionRaw = "${{ steps.increment_version.outputs.new_version_without_prefix }}"
 
           # Ensure 4-segment version
