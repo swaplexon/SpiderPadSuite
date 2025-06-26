@@ -74,7 +74,7 @@ namespace Spiderpad.Updater
                     if (!string.IsNullOrEmpty(installedRoot))
                     {
                         // Use path passed from MAUI
-                        exePath = Path.Combine(installedRoot, exeName);
+                        exePath = Path.Combine(installedRoot, "Spiderpad.exe");
                     }
                     else
                     {
