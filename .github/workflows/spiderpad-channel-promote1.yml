@@ -307,15 +307,7 @@ jobs:
           Write-Host "🗑️ Deleting remote tag (if exists): $tag"
           git push origin :refs/tags/$tag 2>$null || true
 
-      - name: 🧩 Commit metadata and tag
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add metadata/${{ github.event.inputs.channel }}.json
-          git commit -m "🚀 Promote Spiderpad on ${{ github.event.inputs.channel }} from ${{ steps.increment_version.outputs.old_version }} to ${{ steps.increment_version.outputs.new_version }}"
-          git tag release-${{ github.event.inputs.channel }}-${{ steps.increment_version.outputs.new_version_without_prefix }}
-          git push
-          git push --tags
+      
 
 
       - name: 🧾 Update local metadata JSON
@@ -352,13 +344,15 @@ jobs:
           Get-Content $jsonPath
 
 
-      - name: 🧩 Commit changes to repo
+      - name: 🧩 Commit metadata and tag
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add Spiderpad/metadata/${{ github.event.inputs.channel }}.json
-          git commit -m "🔧 [Dry Run] Promote LOOP-MAUI on ${{ github.event.inputs.channel }} from ${{ steps.increment_version.outputs.old_version }} to ${{ steps.increment_version.outputs.new_version }}"
+          git add SpiderPad/metadata/${{ github.event.inputs.channel }}.json
+          git commit -m "🚀 Promote Spiderpad on ${{ github.event.inputs.channel }} from ${{ steps.increment_version.outputs.old_version }} to ${{ steps.increment_version.outputs.new_version }}"
+          git tag release-${{ github.event.inputs.channel }}-${{ steps.increment_version.outputs.new_version_without_prefix }}
           git push
+          git push --tags
 
       - name: ✅ Done
         run: echo "🎉 DRY RUN COMPLETE — metadata file has been updated and committed."
