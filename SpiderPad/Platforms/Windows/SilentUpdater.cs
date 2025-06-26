@@ -83,7 +83,7 @@ public static class SilentUpdater
             File.Copy(updaterExe, dst, true);
 
 
-            var installedRoot = Directory.GetParent(AppContext.BaseDirectory)!.FullName;
+            string pfn = Package.Current.Id.FamilyName;
 
             if (!File.Exists(updaterExe))
             {
@@ -91,7 +91,7 @@ public static class SilentUpdater
                 return;
             }
 
-            var args = $"\"{msixUri}\" {channel} \"{installedRoot}\"";
+            var args = $"\"{msixUri}\" {channel} \"{pfn}\"";
             await Log($"Launching helper: {dst} {args}");
 
             // 5. Start helper process

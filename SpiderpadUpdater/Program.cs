@@ -26,8 +26,8 @@ namespace Spiderpad.Updater
 
             string packageUriText = args[0];
             string channel = args[1];
-            string installedRoot = args[2];
-            Log($"Update started for channel: {channel}, URI: {packageUriText}, App Installed at: {installedRoot}");
+            string packageFamilyName = args[2];
+            Log($"Update started for channel: {channel}, URI: {packageUriText}, App Pfn: {packageFamilyName}");
 
             // 1. Add process existence check
             var processName = $"Spiderpad-{CultureInfo.InvariantCulture.TextInfo.ToTitleCase(channel)}";
@@ -66,31 +66,17 @@ namespace Spiderpad.Updater
                 if (result.IsRegistered)
                 {
                     Log("Update successful");
-                    var exeName = $"Spiderpad-{CultureInfo.InvariantCulture.TextInfo.ToLower(channel)}.exe";
-                    //var exePath = Path.Combine(AppContext.BaseDirectory, exeName);
+                    var pkg = packageManager.FindPackagesForUser(null, packageFamilyName)
+             .OrderByDescending(p => p.Id.Version)
+             .FirstOrDefault();
 
-                    string exePath;
-
-                    if (!string.IsNullOrEmpty(installedRoot))
+                    if (pkg != null)
                     {
-                        // Use path passed from MAUI
-                        exePath = Path.Combine(installedRoot, "Spiderpad.exe");
-                    }
-                    else
-                    {
-                        // Fallback: look one level up from temp
-                        exePath = Path.GetFullPath(Path.Combine(
-                                     AppContext.BaseDirectory, "..", exeName));
-                    }
-
-                    // 4. Add existence check before launch
-                    if (File.Exists(exePath))
-                    {
-                        Log($"Restarting application: {exePath}");
+                        var exePath = Path.Combine(pkg.InstalledLocation.Path, "Spiderpad.exe");
                         Process.Start(exePath);
                         return 0;
                     }
-                    Log($"ERROR: Executable not found at {exePath}");
+                    Log($"ERROR: could not locate package at {packageFamilyName}");
                     return 1;
                 }
 
