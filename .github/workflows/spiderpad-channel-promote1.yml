@@ -44,7 +44,7 @@ jobs:
       - name: Patch ApplicationTitle in .csproj
         run: |
           $appName = "${{ env.APP_DEPLOY_NAME }}"
-          $csprojPath = "SpiderPad.csproj"
+          $csprojPath = "SpiderPad/SpiderPad.csproj"
           Write-Host "🔧 Patching ApplicationTitle in $csprojPath to $appName"
           (Get-Content $csprojPath) -replace '<ApplicationTitle>.*?</ApplicationTitle>', "<ApplicationTitle>$appName</ApplicationTitle>" | Set-Content $csprojPath
           Write-Host "✅ ApplicationTitle patched successfully."
@@ -95,7 +95,7 @@ jobs:
         shell: pwsh
         run: |
           $channel = "${{ github.event.inputs.channel }}"
-          $manifestPath = "./Platforms/Windows/Package.appxmanifest"
+          $manifestPath = "Spiderpad/Platforms/Windows/Package.appxmanifest"
           [xml]$manifest = Get-Content $manifestPath
           $newVersionRaw = "${{ steps.increment_version.outputs.new_version_without_prefix }}"
 
@@ -119,7 +119,7 @@ jobs:
         shell: pwsh
         run: |
           $channel = '${{ github.event.inputs.channel }}'
-          $file    = 'Platforms/Windows/ChannelConfig.cs'
+          $file    = 'Spiderpad/Platforms/Windows/ChannelConfig.cs'
           # Build the file
           @"
           namespace SpiderPad.Platforms.Windows
@@ -144,7 +144,7 @@ jobs:
         run: |
           $out = "$env:GITHUB_WORKSPACE\publish"
           Write-Host "⚙️ Building and publishing SpiderPad..."
-          dotnet publish SpiderPad.csproj -c Release -f net8.0-windows10.0.19041.0 -r win10-x64 -o $out /p:RuntimeIdentifier=win10-x64 /p:GenerateAppxPackageOnBuild=true /p:Version=${{steps.increment_version.outputs.new_version_without_prefix}} /p:AplicationId="com.bestwayhealthcare.${{ github.event.inputs.channel }}" /p:AppxPackageDir="$out\AppPackages"
+          dotnet publish Spiderpad/SpiderPad.csproj -c Release -f net8.0-windows10.0.19041.0 -r win10-x64 -o $out /p:RuntimeIdentifier=win10-x64 /p:GenerateAppxPackageOnBuild=true /p:Version=${{steps.increment_version.outputs.new_version_without_prefix}} /p:AplicationId="com.bestwayhealthcare.${{ github.event.inputs.channel }}" /p:AppxPackageDir="$out\AppPackages"
           Write-Host "✅ Build and publish completed successfully."
           Write-Host "📂 Published artifacts to: $out"
 

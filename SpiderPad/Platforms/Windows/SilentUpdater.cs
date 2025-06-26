@@ -18,8 +18,8 @@ public static class SilentUpdater
     private static readonly HttpClient _http = new();
     private static readonly string LogPath =
         Path.Combine(FileSystem.Current.AppDataDirectory, "updater.log");
-
     private static bool _running;
+    private static bool _exiting;
 
     public static void KickOffUpdateCheck()
     {
@@ -29,7 +29,7 @@ public static class SilentUpdater
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // PRIVATE
+    // PRIVATE IMPLEMENTATION
     // ─────────────────────────────────────────────────────────────────────
     private static async Task CheckAndLaunchUpdaterAsync()
     {
@@ -37,17 +37,17 @@ public static class SilentUpdater
         {
             await Log("Updater check started");
 
-            // 1️⃣  Current package version
+            // 1. Current package version
             var current = Package.Current.Id.Version;
             var currentVer = new Version(current.Major, current.Minor, current.Build, current.Revision);
-            await Log($"Current version {currentVer}");
+            await Log($"Current version: {currentVer}");
 
-            // 2️⃣  Grab .appinstaller feed for this channel
-            string channel = ChannelConfig.Channel;                 // "alpha", "beta", …
+            // 2. Fetch .appinstaller feed
+            string channel = ChannelConfig.Channel;
             var feedUri = new Uri(
                 $"https://spiderpad-{channel}.s3.eu-west-3.amazonaws.com/{channel}/Spiderpad-latest.appinstaller");
 
-            await Log($"Fetching feed {feedUri}");
+            await Log($"Fetching feed: {feedUri}");
             var feedXml = await _http.GetStringAsync(feedUri);
 
             var doc = XDocument.Parse(feedXml);
@@ -56,15 +56,15 @@ public static class SilentUpdater
             var feedVer = Version.Parse(main.Attribute("Version")!.Value);
             var msixUri = new Uri(main.Attribute("Uri")!.Value);
 
-            await Log($"Feed version {feedVer}; MSIX {msixUri}");
+            await Log($"Feed version: {feedVer}, MSIX: {msixUri}");
 
-            if (feedVer == currentVer)
+            if (feedVer <= currentVer)
             {
-                await Log("No update available");
+                await Log("No update required");
                 return;
             }
 
-            // 3️⃣  Show modal overlay
+            // 3. Show update UI
             await MainThread.InvokeOnMainThreadAsync(async () =>
             {
                 var nav = Application.Current?.MainPage?.Navigation;
@@ -76,20 +76,20 @@ public static class SilentUpdater
                 }
             });
 
-            // 4️⃣  Launch helper EXE and quit
+            // 4. Prepare updater launch
             var updaterExe = Path.Combine(
-                AppContext.BaseDirectory, "Updater", "Spiderpad.Updater.exe");
-            
+                AppContext.BaseDirectory, "SpiderpadUpdater.exe");
 
             if (!File.Exists(updaterExe))
             {
-                await Log($"Updater missing at {updaterExe}");
+                await Log($"‼️ Updater missing at {updaterExe}");
                 return;
             }
 
             var args = $"\"{msixUri}\" {channel}";
-            await Log($"Starting helper: {updaterExe} {args}");
+            await Log($"Launching helper: {updaterExe} {args}");
 
+            // 5. Start helper process
             var psi = new ProcessStartInfo(updaterExe)
             {
                 Arguments = args,
@@ -97,37 +97,64 @@ public static class SilentUpdater
                 CreateNoWindow = true,
                 WorkingDirectory = Path.GetDirectoryName(updaterExe)!
             };
-            Process.Start(psi);
 
-            // tiny grace so the helper definitely spawns
-            await Task.Delay(200);
-            await Log("Exiting MAUI to allow update");
-            Application.Current.Quit();
+            var updaterProcess = Process.Start(psi);
+            if (updaterProcess == null || updaterProcess.HasExited)
+            {
+                await Log("‼️ Helper failed to launch");
+                return;
+            }
+
+            // 6. Ensure clean exit
+            _exiting = true;
+            await Log("Initiating application shutdown");
+
+            // Give helper time to initialize
+            await Task.Delay(500);
+
+            // Terminate gracefully
+            Application.Current?.Quit();
+
+            // Force exit if still running after delay
+            await Task.Delay(1000);
+            Environment.Exit(0);
         }
         catch (Exception ex)
         {
-            await Log($"Updater error {ex}");
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                var nav = Application.Current?.MainPage?.Navigation;
-                if (nav != null)
-                {
-                    while (nav.ModalStack.Count > 0)
-                        await nav.PopModalAsync(false);
-                }
-            });
+            await Log($"🚨 Updater error: {ex}");
+            await CleanupUI();
         }
         finally
         {
-            _running = false;
-            await Log("Updater check finished");
+            if (!_exiting)
+            {
+                _running = false;
+                await Log("Updater check completed");
+            }
         }
     }
 
-    private static Task Log(string msg)
+    private static async Task CleanupUI()
     {
-        var line = $"[{DateTime.Now:O}] {msg}{Environment.NewLine}";
-        return File.AppendAllTextAsync(LogPath, line);
+        await MainThread.InvokeOnMainThreadAsync(async () =>
+        {
+            var nav = Application.Current?.MainPage?.Navigation;
+            if (nav != null)
+            {
+                while (nav.ModalStack.Count > 0)
+                    await nav.PopModalAsync(false);
+            }
+        });
+    }
+
+    private static async Task Log(string msg)
+    {
+        try
+        {
+            var line = $"[{DateTime.Now:O}] {msg}{Environment.NewLine}";
+            await File.AppendAllTextAsync(LogPath, line);
+        }
+        catch { /* Ignore log failures */ }
     }
 }
 #endif

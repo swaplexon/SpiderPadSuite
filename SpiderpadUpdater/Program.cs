@@ -12,7 +12,7 @@ namespace Spiderpad.Updater
     {
         static void Log(string message)
         {
-            string logPath = Path.Combine(AppContext.BaseDirectory, "updater.log");
+            string logPath = Path.Combine(AppContext.BaseDirectory, "spiderpadupdater.log");
             File.AppendAllText(logPath,
                 $"[{DateTime.Now:O}] {message}{Environment.NewLine}");
         }
@@ -65,7 +65,7 @@ namespace Spiderpad.Updater
                 if (result.IsRegistered)
                 {
                     Log("Update successful");
-                    var exeName = $"Spiderpad-{CultureInfo.InvariantCulture.TextInfo.ToTitleCase(channel)}.exe";
+                    var exeName = $"Spiderpad-{CultureInfo.InvariantCulture.TextInfo.ToLower(channel)}.exe";
                     var exePath = Path.Combine(AppContext.BaseDirectory, exeName);
 
                     // 4. Add existence check before launch
