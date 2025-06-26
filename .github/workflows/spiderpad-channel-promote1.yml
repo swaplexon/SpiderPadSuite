@@ -140,6 +140,9 @@ jobs:
           Write-Host "📦 Restoring .NET packages..."
           dotnet restore
 
+      - name: 🔨 Build helper EXE
+        run: dotnet publish SpiderpadUpdater/SpiderpadUpdater.csproj -c Release -r win-x64 -o SpiderpadUpdater/publish
+
       - name: 🏗️ Build and Publish
         run: |
           $out = "$env:GITHUB_WORKSPACE\publish"
