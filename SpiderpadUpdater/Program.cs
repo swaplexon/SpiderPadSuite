@@ -27,7 +27,7 @@ namespace Spiderpad.Updater
             string packageUriText = args[0];
             string channel = args[1];
             string installedRoot = args[2];
-            Log($"Update started for channel: {channel}, URI: {packageUriText}");
+            Log($"Update started for channel: {channel}, URI: {packageUriText}, App Installed at: {installedRoot}");
 
             // 1. Add process existence check
             var processName = $"Spiderpad-{CultureInfo.InvariantCulture.TextInfo.ToTitleCase(channel)}";
