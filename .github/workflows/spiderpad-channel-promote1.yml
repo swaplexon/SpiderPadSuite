@@ -214,8 +214,8 @@ jobs:
       - name: 🔏 Sign MSIX with certificate
         shell: pwsh
         run: |
-          $msixPath = ".\Spiderpad.msix"
-          $pfxPath = ".\Spiderpad.pfx"
+          $msixPath = "Spiderpad\Spiderpad.msix"
+          $pfxPath = "Spiderpad\Spiderpad.pfx"
           $password = "${{ secrets.MSIX_CERT_PASSWORD }}"
 
           if (-not (Test-Path $msixPath)) {
