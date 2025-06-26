@@ -45,7 +45,7 @@ public static class SilentUpdater
             // 2. Fetch .appinstaller feed
             string channel = ChannelConfig.Channel;
             var feedUri = new Uri(
-                $"https://spiderpad-{channel}.s3.eu-west-3.amazonaws.com/{channel}/Spiderpad-latest.appinstaller");
+                $"https://spiderpad-alpha.s3.eu-west-3.amazonaws.com/{channel}/Spiderpad-latest.appinstaller");
 
             await Log($"Fetching feed: {feedUri}");
             var feedXml = await _http.GetStringAsync(feedUri);
