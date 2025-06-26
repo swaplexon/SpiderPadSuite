@@ -292,7 +292,7 @@ jobs:
           Write-Host "🚀 Uploading new MSIX and AppInstaller to 'latest'..."
 
           aws s3 cp "$appName.msix" "s3://$bucket/$msixLatest" --region $region --acl public-read
-          aws s3 cp "$appName.appinstaller" "s3://$bucket/$appxLatest" --region $region --acl public-read
+          aws s3 cp "Spiderpad/$appName.appinstaller" "s3://$bucket/$appxLatest" --region $region --acl public-read
 
           Write-Host "✅ Upload complete:"
           Write-Host "🌐 MSIX: https://$bucket.s3.$region.amazonaws.com/$msixLatest"
