@@ -321,26 +321,36 @@ jobs:
       - name: 🧾 Update local metadata JSON
         shell: pwsh
         run: |
-          $channel = "${{ github.event.inputs.channel }}"
-          $version = "${{ steps.increment_version.outputs.new_version_without_prefix }}"
-          $bucket = "${{ env.APP_NAME }}-alpha".ToLower()
-          $region = "${{ secrets.AWS_REGION }}"
-          $appName = "${{ env.APP_NAME }}"
-          
-          $jsonPath = "Spiderpad/metadata/$channel.json"
-          $tempPath = "Spiderpad/metadata/tmp_$channel.json"
-          $url = "https://$bucket.s3.$region.amazonaws.com/$channel/$appName-latest.appinstaller"
+          $channel   = '${{ github.event.inputs.channel }}'          # alpha / beta …
+          $version   = '${{ steps.increment_version.outputs.new_version_without_prefix }}'
+          $appName   = '${{ env.APP_NAME }}'
+          $region    = '${{ secrets.AWS_REGION }}'
+          $bucket    = "$appName-$channel".ToLower()                # <- dynamic bucket
 
-          Write-Host "📝 Updating metadata for $channel to version $version"
-          $json = Get-Content $jsonPath | ConvertFrom-Json
-          $json.version = $version
-          $json.binary_url = $url
+          # ---------- paths ----------
+          $metaDir   = 'metadata'                                   # <-- change ONCE if you move it
+          $jsonPath  = "$metaDir/$channel.json"
 
-          $json | ConvertTo-Json -Depth 5 | Out-File -FilePath $tempPath -Encoding UTF8
-          Move-Item -Path $tempPath -Destination $jsonPath -Force
+          # make sure folder exists (esp. in fresh clones)
+          New-Item -Force -Type Directory $metaDir | Out-Null
 
-          Write-Host "📁 Updated JSON saved to $jsonPath"
+          # ---------- update ----------
+          Write-Host "📝 Updating $jsonPath to version $version"
+
+          $json = if (Test-Path $jsonPath) {
+                    Get-Content $jsonPath | ConvertFrom-Json
+                  } else {
+                    @{ version = ''; binary_url = '' }
+                  }
+
+          $json.version    = $version
+          $json.binary_url = "https://$bucket.s3.$region.amazonaws.com/$channel/$appName-latest.appinstaller"
+
+          $json | ConvertTo-Json -Depth 5 | Set-Content -Encoding UTF8 $jsonPath
+
+          Write-Host "✅ Saved:"
           Get-Content $jsonPath
+
 
       - name: 🧩 Commit changes to repo
         run: |
