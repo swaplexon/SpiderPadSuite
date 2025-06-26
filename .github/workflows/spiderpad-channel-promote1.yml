@@ -328,7 +328,7 @@ jobs:
           $bucket    = "$appName-$channel".ToLower()                # <- dynamic bucket
 
           # ---------- paths ----------
-          $metaDir   = 'metadata'                                   # <-- change ONCE if you move it
+          $metaDir   = 'Spiderpad/metadata'                                   # <-- change ONCE if you move it
           $jsonPath  = "$metaDir/$channel.json"
 
           # make sure folder exists (esp. in fresh clones)
