@@ -59,7 +59,7 @@ namespace Spiderpad.Updater
                 var result = await packageManager.AddPackageAsync(
                     uri,
                     null,
-                    DeploymentOptions.ForceApplicationShutdown | DeploymentOptions.ForceTargetApplicationShutdown
+                    DeploymentOptions.ForceApplicationShutdown | DeploymentOptions.ForceTargetApplicationShutdown | DeploymentOptions.ForceUpdateFromAnyVersion
                 ).AsTask();
 
                 // 3. Verify installation result
