@@ -18,28 +18,28 @@ public static class MauiProgram
         builder
             .UseMauiApp<App>()
             .UseMauiCommunityToolkit()
-            .ConfigureLifecycleEvents(events =>
-            {
-#if WINDOWS
-                events.AddWindows(windows => windows
-                    .OnLaunched(async (window, args) =>
-                    {
-                        var flagPath = Path.Combine(FileSystem.Current.AppDataDirectory, "update.flag");
+//            .ConfigureLifecycleEvents(events =>
+//            {
+//#if WINDOWS
+//                events.AddWindows(windows => windows
+//                    .OnLaunched(async (window, args) =>
+//                    {
+//                        var flagPath = Path.Combine(FileSystem.Current.AppDataDirectory, "update.flag");
 
-                        if (File.Exists(flagPath)) // Match restart argument
-                        {
-                            File.Delete(flagPath);
-                            var nav = Application.Current?.MainPage?.Navigation;
-                            if (nav?.ModalStack.Count > 0) await nav.PopModalAsync();
-                            await Toast.Make("Update installed").Show();
-                        }
-                        else if (string.IsNullOrEmpty(args.Arguments))
-                        {
-                            SilentUpdater.KickOffUpdateCheck(); // Normal launch
-                        }
-                    }));
-#endif
-            })
+//                        if (File.Exists(flagPath)) // Match restart argument
+//                        {
+//                            File.Delete(flagPath);
+//                            var nav = Application.Current?.MainPage?.Navigation;
+//                            if (nav?.ModalStack.Count > 0) await nav.PopModalAsync();
+//                            await Toast.Make("Update installed").Show();
+//                        }
+//                        else if (string.IsNullOrEmpty(args.Arguments))
+//                        {
+//                            SilentUpdater.KickOffUpdateCheck(); // Normal launch
+//                        }
+//                    }));
+//#endif
+//            })
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");

@@ -1,5 +1,6 @@
 ﻿using Microsoft.UI.Xaml;
 using SpiderPad.Platforms.Windows;
+using System.Diagnostics;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -18,15 +19,20 @@ public partial class App : MauiWinUIApplication
     public App()
     {
         this.InitializeComponent();
-
-#if WINDOWS
-        SilentUpdater.StartPeriodicUpdateCheck(TimeSpan.FromMinutes(1));
-#endif
-
     }
 
-  
 
+    protected override void OnLaunched(LaunchActivatedEventArgs args)
+    {
+        base.OnLaunched(args);
+        Debug.WriteLine("✅ OnLaunched completed");
+#if WINDOWS
+        // commented to check at startup just check periodic update for now
+        //SilentUpdater.SafeKickOffUpdate();
+        SilentUpdater.StartPeriodicUpdateCheck(TimeSpan.FromMinutes(1));
+        Debug.WriteLine("✅ Timer started");
+#endif
+    }
     protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
 }
 

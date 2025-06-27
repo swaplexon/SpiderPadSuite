@@ -20,14 +20,44 @@ public static class SilentUpdater
         Path.Combine(FileSystem.Current.AppDataDirectory, "updater.log");
     private static bool _running;
     private static bool _exiting;
+    private static bool _isUpdating;
     private static IDispatcherTimer _updateTimer;
+    private static readonly SemaphoreSlim _updateLock = new(1, 1);
 
     public static void StartPeriodicUpdateCheck(TimeSpan interval)
     {
+        if (Application.Current?.Dispatcher == null)
+        {
+            Log("⚠️ Dispatcher not available. Cannot start timer.");
+            return;
+        }
+        _updateTimer = Application.Current.Dispatcher.CreateTimer();
         _updateTimer = Application.Current.Dispatcher.CreateTimer();
         _updateTimer.Interval = interval;
-        _updateTimer.Tick += (s, e) => KickOffUpdateCheck();
+        _updateTimer.Tick += async (s, e) => await SafeKickOffUpdate();
         _updateTimer.Start();
+        Log($"✅ Update timer started. Interval: {interval}");
+    }
+
+    public static async Task SafeKickOffUpdate()
+    {
+        if (_isUpdating)
+        {
+            Log("⏳ Update already in progress. Skipping check.");
+            return;
+        }
+
+        try
+        {
+            await _updateLock.WaitAsync();
+            _isUpdating = true;
+            await CheckAndLaunchUpdaterAsync();
+        }
+        finally
+        {
+            _isUpdating = false;
+            _updateLock.Release();
+        }
     }
 
     public static void StopPeriodicUpdateCheck()
@@ -94,7 +124,7 @@ public static class SilentUpdater
             var updaterExe = Path.Combine(
                 AppContext.BaseDirectory, "SpiderpadUpdater.exe");
             var dst = Path.Combine(Path.GetTempPath(), "SpiderpadUpdater.exe");
-            File.Copy(updaterExe, dst, true);            
+            File.Copy(updaterExe, dst, true);
 
             if (!File.Exists(updaterExe))
             {
@@ -113,7 +143,7 @@ public static class SilentUpdater
                 Arguments = args,
                 UseShellExecute = false,
                 CreateNoWindow = true,
-               
+
             };
 
             var updaterProcess = Process.Start(psi);
