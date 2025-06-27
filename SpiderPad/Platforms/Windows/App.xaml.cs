@@ -20,13 +20,12 @@ public partial class App : MauiWinUIApplication
         this.InitializeComponent();
 
 #if WINDOWS
-        //_ = Task.Run(async () =>
-        //{
-        //    SilentUpdater.KickOffUpdateCheck();
-        //});
+        SilentUpdater.StartPeriodicUpdateCheck(TimeSpan.FromMinutes(1));
 #endif
 
     }
+
+  
 
     protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
 }

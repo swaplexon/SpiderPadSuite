@@ -20,6 +20,20 @@ public static class SilentUpdater
         Path.Combine(FileSystem.Current.AppDataDirectory, "updater.log");
     private static bool _running;
     private static bool _exiting;
+    private static IDispatcherTimer _updateTimer;
+
+    public static void StartPeriodicUpdateCheck(TimeSpan interval)
+    {
+        _updateTimer = Application.Current.Dispatcher.CreateTimer();
+        _updateTimer.Interval = interval;
+        _updateTimer.Tick += (s, e) => KickOffUpdateCheck();
+        _updateTimer.Start();
+    }
+
+    public static void StopPeriodicUpdateCheck()
+    {
+        _updateTimer?.Stop();
+    }
 
     public static void KickOffUpdateCheck()
     {
