@@ -103,8 +103,8 @@ jobs:
           $bucket = "${{ env.APP_NAME }}-alpha".ToLower()
           $region = "${{ secrets.AWS_REGION }}"
           $appName = "${{ env.APP_NAME }}"
-          $jsonPath = "metadata/$channel.json"
-          $tempPath = "metadata/tmp_$channel.json"
+          $jsonPath = "Spiderpad/metadata/$channel.json"
+          $tempPath = "Spiderpad/metadata/tmp_$channel.json"
           $url = "https://$bucket.s3.$region.amazonaws.com/$channel/$appName-latest.appinstaller"
 
           Write-Host "🔧 Updating $jsonPath to version $version"
@@ -132,7 +132,7 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add metadata/${{ github.event.inputs.channel }}.json
+          git add Spiderpad/metadata/${{ github.event.inputs.channel }}.json
           git commit -m "⏪ [Rollback] Revert Spiderpad on ${{ github.event.inputs.channel }} to ${{ github.event.inputs.revert_to_version }}"
           git tag rollback-${{ github.event.inputs.channel }}-${{ github.event.inputs.revert_to_version }}
           git push
